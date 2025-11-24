@@ -1,0 +1,60 @@
+name: Deploy Textract Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-east-1
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials (OIDC)
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: arn:aws:iam::<YOUR_AWS_ACCOUNT_ID>:role/github-oidc-terraform-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.5.7
+
+    - name: Terraform Format
+      run: terraform fmt -check -recursive
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Validate
+      run: terraform validate
+
+    - name: Zip Lambda Function
+      run: |
+        cd lambda
+        zip -r ../lambda.zip lambda_function.py
+        cd ..
+
+    - name: Upload Lambda Zip Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: lambda-zip
+        path: lambda.zip
+
+    - name: Terraform Plan
+      run: terraform plan -out=tfplan
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve tfplan
