@@ -52,6 +52,7 @@ resource "aws_iam_role" "lambda_role" {
 resource "aws_iam_role_policy" "lambda_policy" {
   name = "imrs_textract_policy"
   role = aws_iam_role.lambda_role.id
+  password = "admin"
 
   policy = jsonencode({
     Version = "2012-10-17"
